@@ -1,0 +1,1837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Family Budget</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=Inter:wght@400;500;600;700&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#1a1a2e;--soft:#4a4a6a;--bg:#f7f5f0;--card:#fff;--border:#e2dfd8;
+  --accent:#4f6ef7;--green:#27ae60;--red:#e74c3c;--amber:#f39c12;
+  --snow:#4f6ef7;--shadow:0 2px 12px rgba(0,0,0,.07);
+}
+body{font-family:'Inter',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh}
+
+/* ── HEADER ── */
+header{background:var(--ink);color:#fff;padding:18px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+header h1{font-family:'DM Serif Display',serif;font-size:1.5rem;letter-spacing:-.5px}
+header .sub{font-size:.75rem;opacity:.55;margin-top:2px}
+.week-pill{font-size:.8rem;background:rgba(255,255,255,.12);padding:5px 14px;border-radius:20px;border:none;color:#fff;cursor:default}
+
+/* ── NAV TABS ── */
+.tabs{background:#fff;border-bottom:2px solid var(--border);display:flex;gap:0;padding:0 28px}
+.tab{padding:12px 20px;font-size:.83rem;font-weight:600;color:var(--soft);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:color .15s,border-color .15s;white-space:nowrap}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab:hover:not(.active){color:var(--ink)}
+
+/* ── LAYOUT ── */
+.page{display:none;max-width:1100px;margin:0 auto;padding:24px 18px 60px}
+.page.active{display:block}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px}
+@media(max-width:720px){.grid2,.grid3{grid-template-columns:1fr}}
+.full{grid-column:1/-1}
+
+/* ── CARD ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;box-shadow:var(--shadow)}
+.card-title{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--soft);margin-bottom:14px}
+
+/* ── STATS ── */
+.stat-row{display:flex;gap:10px;flex-wrap:wrap}
+.stat{flex:1;min-width:90px;background:var(--bg);border-radius:10px;padding:12px 14px}
+.stat .lbl{font-size:.68rem;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.stat .val{font-size:1.4rem;font-family:'DM Serif Display',serif;margin-top:3px}
+.val.green{color:var(--green)}.val.red{color:var(--red)}.val.amber{color:var(--amber)}
+
+/* ── UPLOAD ── */
+.drop{border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+.drop:hover,.drop.over{border-color:var(--accent);background:#f0f3ff}
+.drop .ico{font-size:1.8rem;margin-bottom:6px}
+.drop p{font-size:.82rem;color:var(--soft)}
+.drop strong{color:var(--accent)}
+.ai-status{margin-top:10px;font-size:.78rem;color:var(--soft);text-align:center;min-height:18px}
+.ai-status.loading{color:var(--accent)}.ai-status.error{color:var(--red)}
+
+/* ── PIE CHART ── */
+.chart-wrap{display:flex;align-items:center;gap:20px;flex-wrap:wrap}
+canvas#pie{width:190px!important;height:190px!important;flex-shrink:0}
+.legend{flex:1;min-width:150px;display:flex;flex-direction:column;gap:7px}
+.legend-item{display:flex;align-items:center;gap:8px;font-size:.8rem}
+.ldot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
+.lname{flex:1}.lpct{font-weight:700;color:var(--soft)}.lamt{font-size:.74rem;color:var(--soft)}
+
+/* ── BUDGET TRENDS ── */
+.trend-list{display:flex;flex-direction:column;gap:10px}
+.trend-row{background:var(--bg);border-radius:10px;padding:12px 14px}
+.trend-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.trend-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.trend-name{flex:1;font-size:.83rem;font-weight:500}
+.trend-nums{font-size:.78rem;color:var(--soft)}
+.trend-badge{font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:.04em}
+.badge-good{background:#d4f5e2;color:#1a7a42}
+.badge-warn{background:#fff3cd;color:#856404}
+.badge-over{background:#fde8e8;color:var(--red)}
+.badge-empty{background:var(--border);color:var(--soft)}
+.track-bar{height:8px;background:#e8e6e1;border-radius:4px;overflow:hidden}
+.track-fill{height:100%;border-radius:4px;transition:width .4s}
+.track-fill.good{background:var(--green)}
+.track-fill.warn{background:var(--amber)}
+.track-fill.over{background:var(--red)}
+.pace-note{font-size:.72rem;color:var(--soft);margin-top:4px}
+
+/* ── BUDGET EDITOR ── */
+.budget-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media(max-width:480px){.budget-grid{grid-template-columns:1fr}}
+.budget-row{display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--bg);border-radius:8px}
+.bdot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.bname{flex:1;font-size:.8rem}
+.binput{width:80px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:inherit;text-align:right;background:#fff;color:var(--ink)}
+
+/* ── TRANSACTIONS ── */
+.tx-controls{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center}
+.tx-controls input[type=text]{flex:1;min-width:130px;padding:7px 11px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:inherit;background:var(--bg);color:var(--ink)}
+.tx-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem}
+th{text-align:left;padding:7px 9px;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--soft);border-bottom:2px solid var(--border)}
+td{padding:8px 9px;border-bottom:1px solid var(--border);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+select.cs{font-size:.76rem;font-family:inherit;border:1px solid var(--border);border-radius:6px;padding:3px 6px;background:var(--bg);color:var(--ink);cursor:pointer}
+.aneg{color:var(--red)}.apos{color:var(--green)}
+.empty{text-align:center;padding:36px 16px;color:var(--soft);font-size:.83rem}
+.empty .eico{font-size:2.2rem;margin-bottom:8px}
+
+/* ── BTN ── */
+.btn{padding:7px 14px;border-radius:8px;border:none;font-size:.8rem;font-family:inherit;font-weight:600;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.83}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-ghost{background:var(--bg);color:var(--soft);border:1px solid var(--border)}
+.btn-danger{background:#fde8e8;color:var(--red)}
+.btn-snow{background:var(--snow);color:#fff}
+.btn-sm{padding:4px 10px;font-size:.74rem}
+.actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+
+/* ── NOTES ── */
+textarea.notes{width:100%;min-height:80px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:.82rem;font-family:inherit;resize:vertical;background:var(--bg);color:var(--ink)}
+
+/* ── DEBT SNOWBALL ── */
+.snow-intro{background:linear-gradient(135deg,#1a1a2e,#2d3561);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:16px}
+.snow-intro h2{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:6px}
+.snow-intro p{font-size:.8rem;opacity:.75;line-height:1.6}
+.snow-steps{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.snow-step{background:rgba(255,255,255,.12);border-radius:8px;padding:8px 12px;font-size:.74rem;display:flex;align-items:center;gap:6px}
+.snow-step .snum{background:var(--accent);border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem;flex-shrink:0}
+
+.debt-form{background:var(--bg);border-radius:10px;padding:16px;margin-bottom:16px}
+.debt-form h3{font-size:.8rem;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.form-row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.form-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:120px}
+.form-group label{font-size:.72rem;font-weight:600;color:var(--soft)}
+.form-group input,.form-group select{padding:7px 10px;border:1px solid var(--border);border-radius:8px;font-size:.82rem;font-family:inherit;background:#fff;color:var(--ink)}
+
+.debts-list{display:flex;flex-direction:column;gap:12px}
+.debt-card{border:1px solid var(--border);border-radius:12px;padding:16px;background:#fff;position:relative}
+.debt-card.target{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,110,247,.12)}
+.target-tag{position:absolute;top:-1px;right:14px;background:var(--accent);color:#fff;font-size:.68rem;font-weight:700;padding:2px 10px;border-radius:0 0 8px 8px;letter-spacing:.04em}
+.debt-top{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px}
+.debt-name{font-weight:700;font-size:.95rem}
+.debt-type{font-size:.72rem;color:var(--soft);margin-top:2px}
+.debt-meta{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:10px}
+.debt-meta-item .mlbl{font-size:.68rem;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.debt-meta-item .mval{font-size:.9rem;font-weight:700;font-family:'DM Serif Display',serif;margin-top:1px}
+.debt-progress-wrap{background:#e8e6e1;border-radius:4px;height:8px;overflow:hidden;margin-bottom:6px}
+.debt-progress{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--accent),#7c9ef7);transition:width .5s}
+.debt-pct{font-size:.72rem;color:var(--soft);display:flex;justify-content:space-between}
+.payoff-note{font-size:.75rem;color:var(--green);font-weight:600;margin-top:6px}
+
+.snow-summary{background:linear-gradient(135deg,#eef2ff,#f7f5f0);border:1px solid #c7d0ff;border-radius:12px;padding:16px;margin-top:16px}
+.snow-summary h3{font-size:.78rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:10px}
+.snow-stat-row{display:flex;gap:12px;flex-wrap:wrap}
+.snow-stat{flex:1;min-width:100px}
+.snow-stat .slbl{font-size:.68rem;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.snow-stat .sval{font-size:1.1rem;font-family:'DM Serif Display',serif;color:var(--ink);margin-top:2px}
+.sval.accent{color:var(--accent)}
+
+/* ── ACCOUNT TYPE BADGE ── */
+.acct-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:12px;font-size:.7rem;font-weight:700;letter-spacing:.04em;margin-left:8px}
+.acct-checking{background:#e8f4fd;color:#1a6fa8}
+.acct-savings{background:#d4f5e2;color:#1a7a42}
+.acct-credit{background:#fde8e8;color:#c0392b}
+.acct-unknown{background:var(--border);color:var(--soft)}
+
+/* ── SAVINGS BUCKETS ── */
+.savings-hero{background:linear-gradient(135deg,#0f4c35,#1a7a42);color:#fff;border-radius:12px;padding:18px 20px;margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.savings-hero h2{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:4px}
+.savings-hero p{font-size:.78rem;opacity:.75;line-height:1.5}
+.bucket-form{background:var(--bg);border-radius:10px;padding:16px;margin-bottom:18px}
+.bucket-form h3{font-size:.78rem;font-weight:700;color:var(--soft);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.buckets-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:20px}
+.bucket-card{border:1px solid var(--border);border-radius:12px;padding:16px;background:#fff;position:relative}
+.bucket-card.full-bucket{border-color:var(--green);background:#f0faf4}
+.bucket-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:12px}
+.bucket-icon{font-size:1.5rem;flex-shrink:0}
+.bucket-name{font-weight:700;font-size:.92rem}
+.bucket-note{font-size:.7rem;color:var(--soft);margin-top:2px}
+.bucket-amt-row{display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.bucket-amt-item .bamlbl{font-size:.65rem;color:var(--soft);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.bucket-amt-item .bamval{font-size:1rem;font-weight:700;font-family:'DM Serif Display',serif}
+.bucket-bar-wrap{height:10px;background:#e8e6e1;border-radius:5px;overflow:hidden;margin-bottom:5px}
+.bucket-bar{height:100%;border-radius:5px;background:linear-gradient(90deg,var(--green),#52d68a);transition:width .5s}
+.bucket-bar.full-bar{background:var(--green)}
+.bucket-pct-row{display:flex;justify-content:space-between;font-size:.72rem;color:var(--soft)}
+.savings-total{background:linear-gradient(135deg,#0f4c35,#1a7a42);color:#fff;border-radius:12px;padding:18px 22px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-top:4px}
+.savings-total h3{font-size:.75rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;opacity:.75;margin-bottom:4px}
+.savings-total .total-val{font-family:'DM Serif Display',serif;font-size:2rem}
+.savings-total-buckets{font-size:.78rem;opacity:.7;margin-top:2px}
+.savings-acct-box{background:var(--bg);border-radius:10px;padding:14px 16px;margin-bottom:16px}
+.savings-acct-row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.savings-acct-stat{flex:1;min-width:110px}
+.savings-acct-stat .slbl{font-size:.68rem;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--soft)}
+.savings-acct-stat .sval{font-size:1.1rem;font-family:'DM Serif Display',serif;margin-top:2px}
+.unallocated{color:var(--amber)}
+
+/* ── INSIGHTS ── */
+.insights-section{margin-bottom:24px}
+.insights-section h2{font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+.insight-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px}
+.insight-card{background:#fff;border:1px solid var(--border);border-radius:12px;padding:16px}
+.insight-card.warn{border-left:4px solid var(--amber)}
+.insight-card.danger{border-left:4px solid var(--red)}
+.insight-card.good{border-left:4px solid var(--green)}
+.insight-card.info{border-left:4px solid var(--accent)}
+.insight-title{font-weight:700;font-size:.88rem;margin-bottom:4px;display:flex;align-items:center;gap:6px}
+.insight-body{font-size:.8rem;color:var(--soft);line-height:1.5}
+.insight-amount{font-family:'DM Serif Display',serif;font-size:1.1rem;margin-top:4px}
+.sub-list{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+.sub-item{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:var(--bg);border-radius:8px;font-size:.8rem}
+.sub-item-name{font-weight:500}
+.sub-item-freq{font-size:.7rem;color:var(--soft)}
+.sub-item-amt{font-weight:700;color:var(--red)}
+.learned-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.learned-item{display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--bg);border-radius:8px;font-size:.78rem}
+.learned-merchant{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.learned-arrow{color:var(--soft)}
+
+/* ── DRIVE SYNC ── */
+.drive-bar{background:#1a1a2e;border-bottom:1px solid rgba(255,255,255,.08);padding:8px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.drive-status{font-size:.75rem;color:rgba(255,255,255,.6);display:flex;align-items:center;gap:6px;flex:1}
+.drive-dot{width:7px;height:7px;border-radius:50%;background:#95a5a6;flex-shrink:0}
+.drive-dot.connected{background:var(--green)}
+.drive-dot.syncing{background:var(--amber);animation:pulse 1s infinite}
+.drive-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.drive-actions{display:flex;gap:6px}
+.btn-drive{padding:5px 12px;border-radius:8px;border:1px solid rgba(255,255,255,.2);font-size:.74rem;font-family:inherit;font-weight:600;cursor:pointer;transition:opacity .15s;background:rgba(255,255,255,.1);color:#fff}
+.btn-drive:hover{opacity:.8}
+.btn-drive.primary{background:var(--green);border-color:var(--green)}
+
+/* ── RECEIPTS ── */
+.receipt-drop{border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s}
+.receipt-drop:hover,.receipt-drop.over{border-color:var(--green);background:#f0faf4}
+.receipts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-top:16px}
+.receipt-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;background:#fff;box-shadow:var(--shadow)}
+.receipt-thumb{width:100%;height:140px;object-fit:cover;background:var(--bg);display:flex;align-items:center;justify-content:center;font-size:2.5rem}
+.receipt-thumb img{width:100%;height:100%;object-fit:cover}
+.receipt-thumb.pdf-thumb{background:linear-gradient(135deg,#fee2e2,#fecaca);font-size:2rem}
+.receipt-body{padding:12px}
+.receipt-name{font-weight:600;font-size:.83rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+.receipt-meta{font-size:.72rem;color:var(--soft);margin-bottom:8px}
+.receipt-ai{font-size:.75rem;color:var(--soft);line-height:1.4;border-top:1px solid var(--border);padding-top:8px;margin-top:4px}
+.receipt-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.receipt-tag{font-size:.65rem;padding:2px 7px;border-radius:8px;font-weight:600}
+.tag-medical{background:#d4f5e2;color:#1a7a42}
+.tag-tax{background:#e8f4fd;color:#1a6fa8}
+.tag-business{background:#f3e8ff;color:#7e22ce}
+.tag-other{background:var(--border);color:var(--soft)}
+.receipts-hero{background:linear-gradient(135deg,#1a3a2e,#0f4c35);color:#fff;border-radius:12px;padding:18px 22px;margin-bottom:18px;display:flex;align-items:center;gap:16px;flex-wrap:wrap}
+.receipts-hero h2{font-family:'DM Serif Display',serif;font-size:1.2rem;margin-bottom:4px}
+.receipts-hero p{font-size:.78rem;opacity:.75;line-height:1.5}
+.receipt-ai-status{font-size:.75rem;color:var(--soft);margin-top:8px;min-height:16px;text-align:center}
+
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:9px 18px;border-radius:20px;font-size:.8rem;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>💰 Family Budget</h1>
+    <div class="sub">Weekly review · sit down together, get on the same page</div>
+  </div>
+  <div class="week-pill">📅 Week of <span id="week-display"></span></div>
+</header>
+
+<!-- Google Drive sync bar -->
+<div class="drive-bar" id="drive-bar">
+  <div class="drive-status">
+    <div class="drive-dot" id="drive-dot"></div>
+    <span id="drive-status-text">Not connected to Google Drive</span>
+  </div>
+  <div class="drive-actions">
+    <button class="btn-drive primary" id="drive-connect-btn" onclick="driveConnect()">🔗 Connect Google Drive</button>
+    <button class="btn-drive" id="drive-save-btn" onclick="driveSave()" style="display:none">☁️ Save to Drive</button>
+    <button class="btn-drive" id="drive-load-btn" onclick="driveLoad()" style="display:none">📥 Load from Drive</button>
+    <button class="btn-drive" id="drive-disconnect-btn" onclick="driveDisconnect()" style="display:none" style="opacity:.6">✕ Disconnect</button>
+  </div>
+</div>
+
+<div class="tabs" style="overflow-x:auto">
+  <div class="tab active" onclick="switchTab('overview')">📊 Overview</div>
+  <div class="tab" onclick="switchTab('trends')">📈 Budget Trends</div>
+  <div class="tab" onclick="switchTab('debt')">❄️ Debt Snowball</div>
+  <div class="tab" onclick="switchTab('savings')">🏦 Savings Buckets</div>
+  <div class="tab" onclick="switchTab('insights')">💡 Insights</div>
+  <div class="tab" onclick="switchTab('receipts')">🧾 Receipts</div>
+  <div class="tab" onclick="switchTab('transactions')">📋 Transactions</div>
+</div>
+
+<!-- ══════════════════════ OVERVIEW ══════════════════════ -->
+<div class="page active" id="page-overview">
+  <div class="grid2">
+
+    <!-- Upload: Checking/Credit -->
+    <div class="card full">
+      <div class="card-title">Upload Checking or Credit Card Statements</div>
+      <div class="drop" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="ico">📄</div>
+        <p>Drop CSV or PDF statements here, or <strong>click to browse</strong></p>
+        <p style="margin-top:5px;font-size:.73rem">Chase · Wells Fargo · Bank of America · Capital One · most major banks</p>
+      </div>
+      <input type="file" id="file-input" accept=".csv,.pdf,.txt" multiple style="display:none">
+      <div class="ai-status" id="ai-status">Ready — upload a statement to get started</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="card">
+      <div class="card-title">This Month at a Glance</div>
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">Total Spent</div><div class="val red" id="stat-spent">$0</div></div>
+        <div class="stat"><div class="lbl">Total Income</div><div class="val green" id="stat-income">$0</div></div>
+        <div class="stat"><div class="lbl">Left Over</div><div class="val" id="stat-left">$0</div></div>
+        <div class="stat"><div class="lbl">Savings Balance</div><div class="val green" id="stat-savings">$0</div></div>
+      </div>
+    </div>
+
+    <!-- Pie -->
+    <div class="card">
+      <div class="card-title">Spending by Category</div>
+      <div class="chart-wrap" id="chart-wrap">
+        <div style="color:var(--soft);font-size:.82rem;text-align:center;width:100%">Upload a statement to see your chart</div>
+      </div>
+    </div>
+
+    <!-- Quick budget overview on Overview tab -->
+    <div class="card">
+      <div class="card-title">Budget Snapshot</div>
+      <div id="overview-budget-list"><div style="color:var(--soft);font-size:.82rem">Set budget targets in the Budget Trends tab</div></div>
+    </div>
+
+    <!-- Notes -->
+    <div class="card">
+      <div class="card-title">Weekly Notes</div>
+      <textarea class="notes" id="weekly-notes" placeholder="What did we talk about this week? Goals, upcoming expenses, wins..."></textarea>
+      <div class="actions"><button class="btn btn-ghost btn-sm" onclick="saveNotes()">💾 Save Notes</button></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ TRENDS ══════════════════════ -->
+<div class="page" id="page-trends">
+  <div class="grid2">
+
+    <div class="card full">
+      <div class="card-title">Set Monthly Budget Targets</div>
+      <div class="budget-grid" id="budget-grid"></div>
+      <div class="actions">
+        <button class="btn btn-primary btn-sm" onclick="saveBudgets()">💾 Save Targets</button>
+      </div>
+    </div>
+
+    <div class="card full">
+      <div class="card-title">Budget Trends — Are You On Track?</div>
+      <div class="trend-list" id="trend-list">
+        <div style="color:var(--soft);font-size:.82rem">Set budget targets above and upload a statement to see trends</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ══════════════════════ DEBT SNOWBALL ══════════════════════ -->
+<div class="page" id="page-debt">
+
+  <div class="snow-intro">
+    <h2>❄️ Debt Snowball</h2>
+    <p>List every debt smallest to largest. Pay minimums on all of them — then throw every extra dollar at the smallest one. When it's gone, roll that payment into the next. Upload each account's statement and the balance updates automatically.</p>
+    <div class="snow-steps">
+      <div class="snow-step"><div class="snum">1</div> List all debts smallest → largest</div>
+      <div class="snow-step"><div class="snum">2</div> Pay minimums on everything</div>
+      <div class="snow-step"><div class="snum">3</div> Attack the smallest with extra cash</div>
+      <div class="snow-step"><div class="snum">4</div> Roll each payment forward</div>
+    </div>
+  </div>
+
+  <div class="debt-form">
+    <h3>Add a Debt</h3>
+    <div class="form-row">
+      <div class="form-group" style="min-width:160px">
+        <label>Debt Name</label>
+        <input type="text" id="d-name" placeholder="e.g. Capital One Visa">
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="d-type">
+          <option>Credit Card</option><option>Auto Loan</option><option>Student Loan</option>
+          <option>Personal Loan</option><option>Medical</option><option>Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Current Balance</label>
+        <input type="number" id="d-balance" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Min. Payment</label>
+        <input type="number" id="d-min" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Interest Rate %</label>
+        <input type="number" id="d-rate" placeholder="e.g. 22.9" min="0" step="0.1">
+      </div>
+      <div class="form-group">
+        <label>Original Balance</label>
+        <input type="number" id="d-orig" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <button class="btn btn-snow" onclick="addDebt()">+ Add Debt</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-row" style="margin-bottom:14px;gap:12px;align-items:flex-end;flex-wrap:wrap">
+    <div class="form-group" style="min-width:180px">
+      <label style="font-size:.72rem;font-weight:600;color:var(--soft)">Extra Monthly Payment (Snowball $)</label>
+      <input type="number" id="extra-payment" placeholder="e.g. 200" min="0" step="1" oninput="renderDebts()">
+    </div>
+    <div style="font-size:.78rem;color:var(--soft);padding-bottom:2px">← How much extra can you throw at debt each month?</div>
+  </div>
+
+  <div class="debts-list" id="debts-list">
+    <div style="color:var(--soft);font-size:.83rem;text-align:center;padding:30px">Add your first debt above to get started</div>
+  </div>
+
+  <div class="snow-summary" id="snow-summary" style="display:none">
+    <h3>❄️ Snowball Summary</h3>
+    <div class="snow-stat-row" id="snow-stats"></div>
+  </div>
+</div>
+
+<!-- ══════════════════════ SAVINGS BUCKETS ══════════════════════ -->
+<div class="page" id="page-savings">
+
+  <div class="savings-hero">
+    <div>
+      <h2>🏦 Savings Buckets</h2>
+      <p>Upload your savings statement and the total balance updates automatically. Then divide that balance into named buckets — vacation, emergency fund, Christmas. Each bucket tracks its own amount toward a target.</p>
+    </div>
+  </div>
+
+  <!-- Savings upload lives here -->
+  <div class="card" style="margin-bottom:18px">
+    <div class="card-title">Upload Savings Account Statement</div>
+    <div class="drop" id="savings-drop" onclick="document.getElementById('savings-file-input').click()">
+      <div class="ico">🏦</div>
+      <p>Drop savings CSV or PDF here, or <strong>click to browse</strong></p>
+      <p style="margin-top:5px;font-size:.73rem">Balance updates automatically · deposits tracked · duplicates blocked</p>
+    </div>
+    <input type="file" id="savings-file-input" accept=".csv,.pdf,.txt" multiple style="display:none">
+    <div class="ai-status" id="savings-ai-status">Ready — upload your savings statement</div>
+  </div>
+
+  <!-- Savings account summary -->
+  <div class="savings-acct-box" id="savings-acct-box">
+    <div class="card-title" style="margin-bottom:10px">Savings Account Overview</div>
+    <div class="savings-acct-row">
+      <div class="savings-acct-stat"><div class="slbl">Account Balance</div><div class="sval green" id="sa-balance">$0.00</div></div>
+      <div class="savings-acct-stat"><div class="slbl">Deposits This Period</div><div class="sval green" id="sa-deposits">$0.00</div></div>
+      <div class="savings-acct-stat"><div class="slbl">Withdrawals</div><div class="sval red" id="sa-withdrawals">$0.00</div></div>
+      <div class="savings-acct-stat"><div class="slbl">Allocated to Buckets</div><div class="sval accent" id="sa-allocated">$0.00</div></div>
+      <div class="savings-acct-stat"><div class="slbl">Unallocated</div><div class="sval unallocated" id="sa-unallocated">$0.00</div></div>
+    </div>
+  </div>
+
+  <div class="bucket-form">
+    <h3>Add a Savings Bucket</h3>
+    <div class="form-row">
+      <div class="form-group" style="min-width:170px">
+        <label>Bucket Name</label>
+        <input type="text" id="b-name" placeholder="e.g. Disney Vacation">
+      </div>
+      <div class="form-group">
+        <label>Icon</label>
+        <select id="b-icon">
+          <option value="🏖️">🏖️ Vacation</option>
+          <option value="🛡️">🛡️ Emergency Fund</option>
+          <option value="🏠">🏠 Home</option>
+          <option value="🚗">🚗 Auto</option>
+          <option value="🎓">🎓 Education</option>
+          <option value="🎄">🎄 Holiday / Christmas</option>
+          <option value="💍">💍 Special Event</option>
+          <option value="🛒">🛒 Big Purchase</option>
+          <option value="🏋️">🏋️ Health</option>
+          <option value="👶">👶 Kids</option>
+          <option value="⭐">⭐ Other</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Saved So Far</label>
+        <input type="number" id="b-saved" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Target Amount (optional)</label>
+        <input type="number" id="b-target" placeholder="0.00" min="0" step="0.01">
+      </div>
+      <div class="form-group">
+        <label>Note (optional)</label>
+        <input type="text" id="b-note" placeholder="e.g. Summer 2027">
+      </div>
+      <div class="form-group" style="justify-content:flex-end">
+        <button class="btn btn-primary" onclick="addBucket()">+ Add Bucket</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="buckets-grid" id="buckets-grid">
+    <div style="color:var(--soft);font-size:.83rem;text-align:center;padding:40px;grid-column:1/-1">Add your first savings bucket above — vacation fund, emergency savings, Christmas money, anything you're setting aside.</div>
+  </div>
+
+  <div class="savings-total" id="savings-total-bar">
+    <div>
+      <h3>Total Saved Across All Buckets</h3>
+      <div class="total-val" id="buckets-total">$0.00</div>
+      <div class="savings-total-buckets" id="buckets-count">0 buckets</div>
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:.75rem;opacity:.7;margin-bottom:4px">Targets Total</div>
+      <div style="font-family:'DM Serif Display',serif;font-size:1.3rem" id="buckets-target-total">$0.00</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════ INSIGHTS ══════════════════════ -->
+<div class="page" id="page-insights">
+
+  <div class="insights-section">
+    <h2>📺 Subscriptions & Recurring Charges</h2>
+    <div id="subs-list"><div style="color:var(--soft);font-size:.83rem">Upload statements to detect subscriptions</div></div>
+  </div>
+
+  <div class="insights-section">
+    <h2>⚠️ Spending Alerts</h2>
+    <div class="insight-cards" id="alerts-list"><div style="color:var(--soft);font-size:.83rem">Upload statements to see spending alerts</div></div>
+  </div>
+
+  <div class="insights-section">
+    <h2>📊 Category Breakdown</h2>
+    <div class="insight-cards" id="category-breakdown"></div>
+  </div>
+
+  <div class="insights-section">
+    <h2>🧠 What I've Learned From You</h2>
+    <p style="font-size:.8rem;color:var(--soft);margin-bottom:10px">Every time you correct a category, I remember that merchant for future uploads.</p>
+    <div id="learned-rules-list"><div style="color:var(--soft);font-size:.83rem">No custom rules yet — correct a category in Transactions to teach me</div></div>
+    <div class="actions" style="margin-top:12px">
+      <button class="btn btn-ghost btn-sm" onclick="clearLearnedRules()">🗑 Clear All Learned Rules</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════ RECEIPTS ══════════════════════ -->
+<div class="page" id="page-receipts">
+
+  <div class="receipts-hero">
+    <div>
+      <h2>🧾 Receipts & Documents</h2>
+      <p>Scan or screenshot receipts, medical bills, Amazon orders — anything you want to keep for taxes or records. AI reads each one and tags it automatically. Everything saves to your Google Drive receipts folder.</p>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Upload Receipt or Document</div>
+    <div class="receipt-drop" id="receipt-drop" onclick="document.getElementById('receipt-file-input').click()">
+      <div style="font-size:2rem;margin-bottom:8px">📸</div>
+      <p style="font-size:.85rem;color:var(--soft)">Drop photos, screenshots, or PDFs here, or <strong style="color:var(--green)">click to browse</strong></p>
+      <p style="font-size:.73rem;color:var(--soft);margin-top:5px">JPG · PNG · PDF · HEIC · Screenshots from Amazon, medical portals, anywhere</p>
+    </div>
+    <input type="file" id="receipt-file-input" accept="image/*,.pdf" multiple style="display:none">
+    <div class="receipt-ai-status" id="receipt-ai-status">Ready — upload a receipt to get started</div>
+  </div>
+
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+    <div style="font-size:.8rem;color:var(--soft)">Filter: 
+      <select id="receipt-filter" class="cs" onchange="renderReceipts()" style="margin-left:6px">
+        <option value="">All</option>
+        <option value="medical">Medical</option>
+        <option value="tax">Tax</option>
+        <option value="business">Business</option>
+        <option value="other">Other</option>
+      </select>
+    </div>
+    <div style="font-size:.8rem;color:var(--soft)" id="receipt-count">0 receipts</div>
+  </div>
+
+  <div class="receipts-grid" id="receipts-grid">
+    <div style="color:var(--soft);font-size:.83rem;text-align:center;padding:40px;grid-column:1/-1">No receipts yet — upload your first one above</div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════ TRANSACTIONS ══════════════════════ -->
+<div class="page" id="page-transactions">
+  <div class="card">
+    <div class="card-title">All Transactions</div>
+    <div class="tx-controls">
+      <input type="text" id="search" placeholder="Search..." oninput="renderTable()">
+      <select id="filter-cat" class="cs" onchange="renderTable()"><option value="">All Categories</option></select>
+      <button class="btn btn-ghost btn-sm" onclick="addManualTx()">+ Add Manually</button>
+      <button class="btn btn-danger btn-sm" onclick="clearAll()">🗑 Clear All</button>
+    </div>
+    <div class="tx-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>Description</th><th>Category</th><th>Account</th><th style="text-align:right">Amount</th><th></th></tr></thead>
+        <tbody id="tx-body"></tbody>
+      </table>
+      <div class="empty" id="empty-state"><div class="eico">🧾</div><div>No transactions yet</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script>
+// ── CATEGORIES ───────────────────────────────────────────────
+const CATS = [
+  {name:'Housing',     color:'#4f6ef7', kw:['mortgage','rent','hoa','property tax']},
+  {name:'Groceries',   color:'#27ae60', kw:['walmart','kroger','safeway','smiths','costco','sams club','trader joe','whole foods','harmons','aldi','food','grocery']},
+  {name:'Dining Out',  color:'#f39c12', kw:['mcdonald','burger','pizza','taco','starbucks','chick-fil','restaurant','cafe','doordash','uber eats','grubhub','sushi','diner','wendy','subway','domino','chipotle','applebee','olive garden','ihop','denny']},
+  {name:'Gas & Auto',  color:'#e74c3c', kw:['chevron','shell','exxon','mobil','sinclair','gas','fuel','autozone','jiffy lube','oil change','car wash','parking']},
+  {name:'Utilities',   color:'#9b59b6', kw:['electric','water','questar','xcel','utility','sewage','garbage','internet','comcast','xfinity','at&t','verizon','t-mobile','phone']},
+  {name:'Healthcare',  color:'#1abc9c', kw:['hospital','doctor','clinic','pharmacy','walgreens','cvs','rite aid','dental','vision','insurance','copay','medical','health']},
+  {name:'Shopping',    color:'#e67e22', kw:['amazon','target','home depot','lowes','ikea','best buy','tjmaxx','marshalls','ross','kohl','old navy','gap','nordstrom','macy','ebay']},
+  {name:'Entertainment',color:'#3498db',kw:['netflix','hulu','disney','spotify','apple','youtube','movie','theater','concert','gym','planet fitness','gaming']},
+  {name:'Travel',      color:'#16a085', kw:['hotel','airbnb','airline','delta','southwest','united','american air','lyft','uber','rental car']},
+  {name:'Education',   color:'#8e44ad', kw:['tuition','school','book','course','udemy']},
+  {name:'Childcare',   color:'#e91e63', kw:['daycare','babysitter','child','pediatric','kid']},
+  {name:'Income',      color:'#2ecc71', kw:['payroll','direct deposit','salary','deposit','ach credit','zelle received','venmo','transfer from']},
+  {name:'Transfer',    color:'#95a5a6', kw:['transfer','payment','autopay','online payment']},
+  {name:'Other',       color:'#bdc3c7', kw:[]},
+];
+
+function catFor(name){ return CATS.find(c=>c.name===name)||CATS[CATS.length-1]; }
+
+// Normalize merchant name for learning key
+function merchantKey(desc){
+  return desc.toLowerCase()
+    .replace(/[^a-z0-9 ]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim()
+    .split(' ').slice(0,4).join(' '); // first 4 words
+}
+
+function autoCat(desc){
+  // 1. Check learned rules first (your corrections take priority)
+  const key=merchantKey(desc);
+  for(const [pattern, cat] of Object.entries(learnedRules)){
+    if(key.includes(pattern) || pattern.includes(key.split(' ')[0])) return cat;
+  }
+  // 2. Fall back to built-in keyword list
+  const d=desc.toLowerCase();
+  for(const c of CATS){ if(c.name==='Other')continue; if(c.kw.some(k=>d.includes(k)))return c.name; }
+  return 'Other';
+}
+
+// ── STATE ────────────────────────────────────────────────────
+let transactions=[], budgets={}, notes='', debts=[], buckets=[], savingsTxs=[], learnedRules={}, receipts=[];
+const KEY='family_budget_v7';
+let savingsBalance=0;
+
+function load(){
+  try{
+    const r=localStorage.getItem(KEY);
+    if(r){
+      const d=JSON.parse(r);
+      transactions=d.transactions||[];budgets=d.budgets||defBudgets();notes=d.notes||'';
+      debts=d.debts||[];buckets=d.buckets||[];savingsTxs=d.savingsTxs||[];
+      savingsBalance=d.savingsBalance||0;learnedRules=d.learnedRules||{};receipts=d.receipts||[];
+    } else {
+      const old=localStorage.getItem('family_budget_v6')||localStorage.getItem('family_budget_v5');
+      if(old){
+        const d=JSON.parse(old);
+        transactions=d.transactions||[];budgets=d.budgets||defBudgets();notes=d.notes||'';
+        debts=d.debts||[];buckets=d.buckets||[];savingsTxs=d.savingsTxs||[];
+        savingsBalance=d.savingsBalance||0;learnedRules=d.learnedRules||{};
+      } else { budgets=defBudgets(); }
+    }
+  }catch{budgets=defBudgets();}
+}
+
+function getDataBundle(){
+  return {transactions,budgets,notes,debts,buckets,savingsTxs,savingsBalance,learnedRules,receipts:receipts.map(r=>({...r,dataUrl:undefined}))};
+}
+
+function save(){
+  localStorage.setItem(KEY,JSON.stringify(getDataBundle()));
+  // Auto-sync to Drive if connected and not already syncing
+  if(driveConnected && !driveSyncing) debouncedDriveSave();
+}
+function defBudgets(){ const b={}; CATS.forEach(c=>{if(c.name!=='Income'&&c.name!=='Transfer')b[c.name]=0;}); return b; }
+
+// ── WEEK ─────────────────────────────────────────────────────
+function setWeek(){
+  const n=new Date(),d=n.getDay();
+  const s=new Date(n); s.setDate(n.getDate()-d);
+  const e=new Date(s); e.setDate(s.getDate()+6);
+  const f=x=>x.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  document.getElementById('week-display').textContent=`${f(s)} – ${f(e)}`;
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(id){
+  const tabNames=['overview','trends','debt','savings','insights','receipts','transactions'];
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',tabNames[i]===id));
+  document.querySelectorAll('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+id));
+  if(id==='insights') renderInsights();
+  if(id==='receipts') renderReceipts();
+}
+
+// ── UPLOAD ───────────────────────────────────────────────────
+const drop=document.getElementById('drop-zone');
+const fi=document.getElementById('file-input');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');handleFiles(e.dataTransfer.files);});
+fi.addEventListener('change',e=>handleFiles(e.target.files));
+
+const savingsDrop=document.getElementById('savings-drop');
+const savingsFi=document.getElementById('savings-file-input');
+savingsDrop.addEventListener('dragover',e=>{e.preventDefault();savingsDrop.classList.add('over');});
+savingsDrop.addEventListener('dragleave',()=>savingsDrop.classList.remove('over'));
+savingsDrop.addEventListener('drop',e=>{e.preventDefault();savingsDrop.classList.remove('over');handleSavingsFiles(e.dataTransfer.files);});
+savingsFi.addEventListener('change',e=>handleSavingsFiles(e.target.files));
+
+function handleSavingsFiles(files){
+  Array.from(files).forEach(f=>{
+    if(f.name.match(/\.(csv|txt)$/i)) parseSavingsCSV(f);
+    else if(f.name.match(/\.pdf$/i)) parseSavingsPDF(f);
+    else showSavingsStatus('Use CSV or PDF files.','error');
+  });
+}
+function showSavingsStatus(m,t){const e=document.getElementById('savings-ai-status');e.textContent=m;e.className='ai-status '+(t||'');}
+
+function parseSavingsCSV(file){
+  showSavingsStatus('Reading CSV...','loading');
+  Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>{
+    if(!r.data.length){showSavingsStatus('No data in CSV.','error');return;}
+    sendSavingsToAI(JSON.stringify(r.data.slice(0,120)));
+  },error:()=>showSavingsStatus('Could not read CSV.','error')});
+}
+function parseSavingsPDF(file){
+  showSavingsStatus('Reading PDF...','loading');
+  const rd=new FileReader();
+  rd.onload=async e=>{ await sendSavingsPDFToAI(e.target.result.split(',')[1]); };
+  rd.readAsDataURL(file);
+}
+async function sendSavingsPDFToAI(b64){
+  showSavingsStatus('🤖 Reading savings statement...','loading');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:1200,
+      messages:[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+        {type:'text',text:`Extract all transactions from this savings account statement. Return ONLY JSON: {"currentBalance":number,"transactions":[{"date":"YYYY-MM-DD","description":"string","amount":number}]} where positive amount=deposit, negative=withdrawal. No markdown.`}
+      ]}]
+    })});
+    const d=await res.json();
+    processSavingsAI(d.content?.map(b=>b.text||'').join('')||'');
+  }catch{showSavingsStatus('PDF error — try CSV export.','error');}
+}
+async function sendSavingsToAI(csv){
+  showSavingsStatus('🤖 Processing savings statement...','loading');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:1200,
+      messages:[{role:'user',content:`Savings account CSV:\n${csv}\n\nExtract all transactions and the current/ending balance. Return ONLY JSON: {"currentBalance":number,"transactions":[{"date":"YYYY-MM-DD","description":"string","amount":number}]} — positive=deposit, negative=withdrawal. No markdown.`}]
+    })});
+    const d=await res.json();
+    processSavingsAI(d.content?.map(b=>b.text||'').join('')||'');
+  }catch{showSavingsStatus('AI error. Check connection.','error');}
+}
+function processSavingsAI(text){
+  try{
+    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    const arr=parsed.transactions||[];
+    const balance=parsed.currentBalance||0;
+    const existing=new Set(savingsTxs.map(tx=>txFingerprint(tx.date,tx.description,tx.amount)));
+    let added=0,dupes=0;
+    arr.forEach(tx=>{
+      if(!tx.description||tx.amount===undefined)return;
+      const fp=txFingerprint(tx.date||'',tx.description,tx.amount);
+      if(existing.has(fp)){dupes++;return;}
+      existing.add(fp);
+      savingsTxs.push({id:Date.now()+Math.random(),date:tx.date||'',description:tx.description,amount:parseFloat(tx.amount)||0});
+      added++;
+    });
+    if(balance) savingsBalance=balance;
+    save();
+    showSavingsStatus(dupes>0?`✅ Added ${added} · skipped ${dupes} duplicates · Balance ${fmt(balance)}`:`✅ Added ${added} transactions · Balance ${fmt(balance)}`,'');
+    renderSavingsAccount();renderBuckets();renderStats();
+  }catch{showSavingsStatus('Could not parse savings statement.','error');}
+}
+
+// ── ACCOUNT TYPE DETECTION ───────────────────────────────────
+function detectAccountType(text){
+  const t=text.toLowerCase();
+  if(t.includes('credit card')||t.includes('card account')||t.includes('purchases')||t.includes('minimum payment due')||t.includes('statement balance')||t.includes('revolving')) return 'credit';
+  if(t.includes('savings')||t.includes('high yield')||t.includes('money market')||t.includes('interest earned')) return 'savings';
+  if(t.includes('checking')||t.includes('debit')||t.includes('check card')||t.includes('direct deposit')||t.includes('atm withdrawal')) return 'checking';
+  return 'unknown';
+}
+function acctLabel(type){ return type==='credit'?'💳 Credit Card':type==='savings'?'🏦 Savings':type==='checking'?'✅ Checking':'📄 Unknown'; }
+function acctClass(type){ return type==='credit'?'acct-credit':type==='savings'?'acct-savings':type==='checking'?'acct-checking':'acct-unknown'; }
+
+let lastUploadType='unknown';
+
+function handleFiles(files){
+  Array.from(files).forEach(f=>{
+    if(f.name.match(/\.(csv|txt)$/i)) parseCSV(f);
+    else if(f.name.match(/\.pdf$/i)) parsePDF(f);
+    else showStatus('Use CSV or PDF files.','error');
+  });
+}
+function parseCSV(file){
+  showStatus('Reading CSV...','loading');
+  Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>{
+    if(!r.data.length){showStatus('No data in CSV.','error');return;}
+    const raw=JSON.stringify(r.data.slice(0,120));
+    const headerStr=Object.keys(r.data[0]||{}).join(' ').toLowerCase();
+    lastUploadType=detectAccountType(headerStr+' '+file.name);
+    sendToAI(raw,lastUploadType);
+  },error:()=>showStatus('Could not read CSV.','error')});
+}
+function parsePDF(file){
+  showStatus('Reading PDF...','loading');
+  const rd=new FileReader();
+  rd.onload=async e=>{ await sendToAIPDF(e.target.result.split(',')[1],file.name); };
+  rd.readAsDataURL(file);
+}
+async function sendToAIPDF(b64,filename){
+  showStatus('🤖 Extracting from PDF...','loading');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:1200,
+      messages:[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+        {type:'text',text:`Extract all transactions from this bank or credit card statement. Also identify the account type as one of: "checking", "savings", or "credit". Return ONLY a JSON object with two fields: {"accountType":"checking|savings|credit","transactions":[{"date":"YYYY-MM-DD","description":"string","amount":number}]} — amounts negative=expense/charge, positive=income/credit/deposit. No markdown.`}
+      ]}]
+    })});
+    const d=await res.json();
+    const text=d.content?.map(b=>b.text||'').join('')||'';
+    processAIWithType(text);
+  }catch{showStatus('PDF error — try CSV export.','error');}
+}
+async function sendToAI(csv,hintType){
+  showStatus('🤖 Categorizing transactions...','loading');
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:1200,
+      messages:[{role:'user',content:`Bank/card CSV data:\n${csv}\n\nExtract all transactions and identify the account type ("checking", "savings", or "credit"). Return ONLY JSON: {"accountType":"checking|savings|credit","transactions":[{"date":"YYYY-MM-DD","description":"string","amount":number}]}. Negative=expense, positive=income/deposit. Skip balance/header rows. No markdown.`}]
+    })});
+    const d=await res.json();
+    const text=d.content?.map(b=>b.text||'').join('')||'';
+    processAIWithType(text,hintType);
+  }catch{showStatus('AI error. Check connection.','error');}
+}
+// Build a fingerprint for duplicate detection: date + normalized description + rounded amount
+function txFingerprint(date, desc, amount){
+  const d = (date||'').trim();
+  const a = parseFloat(amount).toFixed(2);
+  const n = desc.toLowerCase().replace(/\s+/g,' ').trim();
+  return `${d}|${n}|${a}`;
+}
+
+function processAIWithType(text, hintType){
+  try{
+    const clean=text.replace(/```json|```/g,'').trim();
+    let parsed=JSON.parse(clean);
+
+    // Support both {accountType, transactions:[]} and plain array
+    let arr, accountType;
+    if(Array.isArray(parsed)){
+      arr=parsed; accountType=hintType||'unknown';
+    } else {
+      arr=parsed.transactions||[]; accountType=parsed.accountType||hintType||'unknown';
+    }
+    if(!Array.isArray(arr)||!arr.length){showStatus('No transactions found.','error');return;}
+
+    const existing=new Set(transactions.map(tx=>txFingerprint(tx.date,tx.description,tx.amount)));
+    let added=0,dupes=0;
+    arr.forEach(tx=>{
+      if(!tx.description||tx.amount===undefined)return;
+      const date=tx.date||'';
+      const amount=parseFloat(tx.amount)||0;
+      const fp=txFingerprint(date,tx.description,amount);
+      if(existing.has(fp)){dupes++;return;}
+      existing.add(fp);
+      transactions.push({id:Date.now()+Math.random(),date,description:tx.description,amount,category:autoCat(tx.description),accountType});
+      added++;
+    });
+
+    save();
+    const typeLabel=acctLabel(accountType);
+    const typeClass=acctClass(accountType);
+    const badge=`<span class="acct-badge ${typeClass}">${typeLabel}</span>`;
+    if(dupes>0&&added===0){
+      showStatus(`⚠️ All ${dupes} transactions already exist — nothing added.`,'');
+    } else if(dupes>0){
+      document.getElementById('ai-status').innerHTML=`✅ Added ${added} new · skipped ${dupes} duplicates ${badge}`;
+    } else {
+      document.getElementById('ai-status').innerHTML=`✅ Added ${added} transactions ${badge}`;
+    }
+    refresh();
+  }catch(e){showStatus('Could not parse AI response.','error');}
+}
+function showStatus(m,t){const e=document.getElementById('ai-status');e.textContent=m;e.className='ai-status '+(t||'');}
+
+// ── REFRESH ──────────────────────────────────────────────────
+function refresh(){renderStats();renderChart();renderOverviewBudget();renderTrends();renderBudgets();renderTable();renderNotes();}
+
+// ── STATS ────────────────────────────────────────────────────
+function renderStats(){
+  let spent=0,income=0;
+  transactions.forEach(tx=>{
+    if(tx.category==='Income') income+=Math.abs(tx.amount);
+    else if(tx.amount<0) spent+=Math.abs(tx.amount);
+  });
+  const left=income-spent;
+  document.getElementById('stat-spent').textContent=fmt(spent);
+  document.getElementById('stat-income').textContent=fmt(income);
+  const el=document.getElementById('stat-left');
+  el.textContent=fmt(Math.abs(left));
+  el.className='val '+(left>=0?'green':'red');
+  document.getElementById('stat-savings').textContent=fmt(savingsBalance);
+}
+
+// ── PIE ──────────────────────────────────────────────────────
+function renderChart(){
+  const wrap=document.getElementById('chart-wrap');
+  const exp=transactions.filter(tx=>tx.amount<0&&tx.category!=='Transfer');
+  if(!exp.length){wrap.innerHTML='<div style="color:var(--soft);font-size:.82rem;text-align:center;width:100%">Upload a statement to see your chart</div>';return;}
+  const tot={};
+  exp.forEach(tx=>{ tot[tx.category]=(tot[tx.category]||0)+Math.abs(tx.amount); });
+  const sorted=Object.entries(tot).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,[,v])=>s+v,0);
+  wrap.innerHTML='<canvas id="pie" width="190" height="190"></canvas><div class="legend" id="legend"></div>';
+  const ctx=document.getElementById('pie').getContext('2d');
+  let st=-Math.PI/2;
+  sorted.forEach(([cat,val])=>{
+    const sl=(val/total)*2*Math.PI,col=catFor(cat).color;
+    ctx.beginPath();ctx.moveTo(95,95);ctx.arc(95,95,85,st,st+sl);ctx.closePath();
+    ctx.fillStyle=col;ctx.fill();ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
+    st+=sl;
+  });
+  ctx.beginPath();ctx.arc(95,95,46,0,2*Math.PI);ctx.fillStyle='#fff';ctx.fill();
+  ctx.fillStyle='#1a1a2e';ctx.font='bold 13px Inter';ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillText(fmt(total),95,95);
+  document.getElementById('legend').innerHTML=sorted.map(([cat,val])=>`
+    <div class="legend-item">
+      <div class="ldot" style="background:${catFor(cat).color}"></div>
+      <div class="lname">${cat}</div>
+      <div class="lpct">${((val/total)*100).toFixed(0)}%</div>
+      <div class="lamt">${fmt(val)}</div>
+    </div>`).join('');
+}
+
+// ── OVERVIEW BUDGET SNAPSHOT ──────────────────────────────────
+function renderOverviewBudget(){
+  const spent={};
+  transactions.forEach(tx=>{ if(tx.amount<0) spent[tx.category]=(spent[tx.category]||0)+Math.abs(tx.amount); });
+  const cats=CATS.filter(c=>c.name!=='Income'&&c.name!=='Transfer'&&(budgets[c.name]>0||spent[c.name]>0));
+  if(!cats.length){document.getElementById('overview-budget-list').innerHTML='<div style="color:var(--soft);font-size:.82rem">Set budget targets in the Budget Trends tab</div>';return;}
+  const today=new Date().getDate(), daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
+  const monthPct=today/daysInMonth;
+  document.getElementById('overview-budget-list').innerHTML=cats.slice(0,6).map(cat=>{
+    const target=budgets[cat.name]||0;const s=spent[cat.name]||0;
+    if(!target)return'';
+    const pct=Math.min((s/target)*100,100);
+    const expected=target*monthPct;
+    const status=s>target?'over':s>expected*1.1?'warn':'good';
+    const badge=status==='over'?'OVER BUDGET':status==='warn'?'WATCH THIS':'ON TRACK';
+    const bc=status==='over'?'badge-over':status==='warn'?'badge-warn':'badge-good';
+    return`<div style="margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">
+        <div style="width:9px;height:9px;border-radius:50%;background:${cat.color};flex-shrink:0"></div>
+        <span style="flex:1;font-size:.82rem;font-weight:500">${cat.name}</span>
+        <span class="trend-badge ${bc}">${badge}</span>
+      </div>
+      <div class="track-bar"><div class="track-fill ${status}" style="width:${pct}%"></div></div>
+      <div style="font-size:.7rem;color:var(--soft);margin-top:3px;text-align:right">${fmt(s)} of ${fmt(target)}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── TRENDS ───────────────────────────────────────────────────
+function renderTrends(){
+  const list=document.getElementById('trend-list');
+  const spent={};
+  transactions.forEach(tx=>{ if(tx.amount<0) spent[tx.category]=(spent[tx.category]||0)+Math.abs(tx.amount); });
+  const today=new Date().getDate(), daysInMonth=new Date(new Date().getFullYear(),new Date().getMonth()+1,0).getDate();
+  const monthPct=today/daysInMonth;
+
+  const cats=CATS.filter(c=>c.name!=='Income'&&c.name!=='Transfer').filter(c=>(budgets[c.name]||0)>0||(spent[c.name]||0)>0);
+  if(!cats.length){list.innerHTML='<div style="color:var(--soft);font-size:.82rem">Set targets above and upload a statement to see trends.</div>';return;}
+
+  list.innerHTML=cats.map(cat=>{
+    const target=budgets[cat.name]||0;
+    const s=spent[cat.name]||0;
+    if(!target&&!s) return '';
+    if(!target) return `<div class="trend-row"><div class="trend-top"><div class="trend-dot" style="background:${cat.color}"></div><div class="trend-name">${cat.name}</div><div class="trend-nums">${fmt(s)} spent</div><span class="trend-badge badge-empty">NO TARGET</span></div></div>`;
+    const pct=Math.min((s/target)*100,100);
+    const expected=target*monthPct;
+    const remaining=Math.max(target-s,0);
+    let status='good',badge='✅ On Track',bc='badge-good';
+    if(s>target){status='over';badge='🚨 Over Budget';bc='badge-over';}
+    else if(s>expected*1.1){status='warn';badge='⚠️ Watch This';bc='badge-warn';}
+    const projectedEnd=monthPct>0?(s/monthPct):0;
+    let paceNote='';
+    if(monthPct>0.05){
+      if(projectedEnd>target*1.05) paceNote=`At this pace you'll end the month at ${fmt(projectedEnd)} — ${fmt(projectedEnd-target)} over budget.`;
+      else if(status==='good') paceNote=`At this pace you'll end around ${fmt(projectedEnd)} — ${fmt(remaining)} left to spend.`;
+    }
+    return`<div class="trend-row">
+      <div class="trend-top">
+        <div class="trend-dot" style="background:${cat.color}"></div>
+        <div class="trend-name">${cat.name}</div>
+        <div class="trend-nums">${fmt(s)} / ${fmt(target)}</div>
+        <span class="trend-badge ${bc}">${badge}</span>
+      </div>
+      <div class="track-bar"><div class="track-fill ${status}" style="width:${pct}%"></div></div>
+      ${paceNote?`<div class="pace-note">${paceNote}</div>`:''}
+    </div>`;
+  }).filter(Boolean).join('');
+  if(!list.innerHTML) list.innerHTML='<div style="color:var(--soft);font-size:.82rem">Set budget targets above to see trends.</div>';
+}
+
+// ── BUDGET EDITOR ────────────────────────────────────────────
+function renderBudgets(){
+  const spent={};
+  transactions.forEach(tx=>{if(tx.amount<0)spent[tx.category]=(spent[tx.category]||0)+Math.abs(tx.amount);});
+  document.getElementById('budget-grid').innerHTML=CATS.filter(c=>c.name!=='Income'&&c.name!=='Transfer').map(cat=>`
+    <div class="budget-row">
+      <div class="bdot" style="background:${cat.color}"></div>
+      <div class="bname">${cat.name}</div>
+      <input class="binput" type="number" min="0" placeholder="$0" value="${budgets[cat.name]||''}" data-cat="${cat.name}"
+        oninput="budgets['${cat.name}']=parseFloat(this.value)||0;renderTrends();renderOverviewBudget();">
+    </div>`).join('');
+}
+
+// ── TRANSACTIONS ─────────────────────────────────────────────
+function renderTable(){
+  const search=document.getElementById('search').value.toLowerCase();
+  const fc=document.getElementById('filter-cat').value;
+  const cats=[...new Set(transactions.map(t=>t.category))].sort();
+  const fe=document.getElementById('filter-cat');const cur=fe.value;
+  fe.innerHTML='<option value="">All Categories</option>'+cats.map(c=>`<option value="${c}" ${c===cur?'selected':''}>${c}</option>`).join('');
+  let filtered=transactions.filter(tx=>{
+    const ms=!search||tx.description.toLowerCase().includes(search)||tx.category.toLowerCase().includes(search);
+    const mc=!fc||tx.category===fc;return ms&&mc;
+  }).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const body=document.getElementById('tx-body'),empty=document.getElementById('empty-state');
+  if(!filtered.length){body.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  body.innerHTML=filtered.map(tx=>{
+    const at=tx.accountType||'unknown';
+    return`<tr>
+      <td style="white-space:nowrap;color:var(--soft)">${tx.date||'—'}</td>
+      <td>${tx.description}</td>
+      <td>
+        <select class="cs" onchange="changeCat('${tx.id}',this.value)" style="background:${catFor(tx.category).color}22;border-color:${catFor(tx.category).color}44">
+          ${CATS.map(c=>`<option value="${c.name}" ${c.name===tx.category?'selected':''}>${c.name}</option>`).join('')}
+        </select>
+      </td>
+      <td><span class="acct-badge ${acctClass(at)}" style="font-size:.65rem;padding:2px 7px">${at==='credit'?'💳':at==='savings'?'🏦':at==='checking'?'✅':'📄'}</span></td>
+      <td style="text-align:right;font-weight:500" class="${tx.amount<0?'aneg':'apos'}">${tx.amount<0?'-':'+'}${fmt(Math.abs(tx.amount))}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="deleteTx('${tx.id}')">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ── DEBT SNOWBALL ─────────────────────────────────────────────
+function addDebt(){
+  const name=document.getElementById('d-name').value.trim();
+  const type=document.getElementById('d-type').value;
+  const balance=parseFloat(document.getElementById('d-balance').value)||0;
+  const min=parseFloat(document.getElementById('d-min').value)||0;
+  const rate=parseFloat(document.getElementById('d-rate').value)||0;
+  const orig=parseFloat(document.getElementById('d-orig').value)||balance;
+  if(!name||!balance){toast('Enter a name and balance.');return;}
+  debts.push({id:Date.now(),name,type,balance,min,rate,orig:orig||balance});
+  debts.sort((a,b)=>a.balance-b.balance);
+  ['d-name','d-balance','d-min','d-rate','d-orig'].forEach(id=>document.getElementById(id).value='');
+  save();renderDebts();toast('Debt added!');
+}
+
+function deleteDebt(id){
+  debts=debts.filter(d=>d.id!==id);
+  save();renderDebts();
+}
+
+function updateDebtBalance(id,val){
+  const d=debts.find(d=>d.id===id);
+  if(d){d.balance=parseFloat(val)||0;save();renderDebts();}
+}
+
+function renderDebts(){
+  const list=document.getElementById('debts-list');
+  const summary=document.getElementById('snow-summary');
+  if(!debts.length){list.innerHTML='<div style="color:var(--soft);font-size:.83rem;text-align:center;padding:30px">Add your first debt above to get started</div>';summary.style.display='none';return;}
+  const extra=parseFloat(document.getElementById('extra-payment')?.value)||0;
+  const sorted=[...debts].sort((a,b)=>a.balance-b.balance);
+
+  // Snowball payoff projection
+  let snowball=extra;
+  const payoffMonths=sorted.map((debt)=>{
+    if(!debt.balance) return 0;
+    const monthlyRate=debt.rate/100/12;
+    let bal=debt.balance,months=0,pmt=debt.min+snowball;
+    while(bal>0&&months<600){
+      const interest=monthlyRate>0?bal*monthlyRate:0;
+      bal=bal+interest-pmt;
+      months++;
+      if(bal<=0)break;
+    }
+    snowball+=debt.min;
+    return months;
+  });
+
+  let totalDebt=debts.reduce((s,d)=>s+d.balance,0);
+  let totalMin=debts.reduce((s,d)=>s+d.min,0);
+  let maxMonths=Math.max(...payoffMonths);
+
+  list.innerHTML=sorted.map((debt,i)=>{
+    const pct=debt.orig>0?Math.max(0,Math.min(100,((debt.orig-debt.balance)/debt.orig)*100)):0;
+    const months=payoffMonths[i];
+    const yrs=months>0?Math.floor(months/12):0;
+    const mos=months>0?months%12:0;
+    const timeStr=months===0?'Paid off! 🎉':yrs>0?`${yrs}y ${mos}m`:`${mos} months`;
+    const isTarget=i===0&&debt.balance>0;
+    const lastUpdated=debt.lastUpdated?`<span style="font-size:.68rem;color:var(--soft);margin-left:6px">Updated ${debt.lastUpdated}</span>`:'';
+    return`<div class="debt-card ${isTarget?'target':''}">
+      ${isTarget?'<div class="target-tag">🎯 ATTACK THIS FIRST</div>':''}
+      <div class="debt-top">
+        <div>
+          <div class="debt-name">${debt.name}</div>
+          <div class="debt-type">${debt.type} · ${debt.rate}% APR</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <label class="btn btn-ghost btn-sm" style="cursor:pointer;white-space:nowrap">
+            📄 Upload Statement
+            <input type="file" accept=".csv,.pdf,.txt" style="display:none" onchange="handleDebtStatement(event,${debt.id})">
+          </label>
+          <button class="btn btn-danger btn-sm" onclick="deleteDebt(${debt.id})">✕</button>
+        </div>
+      </div>
+      <div class="debt-meta">
+        <div class="debt-meta-item">
+          <div class="mlbl">Balance ${lastUpdated}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <input type="number" value="${debt.balance}" min="0" step="0.01" style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:.85rem;font-family:inherit;font-weight:700"
+              onchange="updateDebtBalance(${debt.id},this.value)">
+          </div>
+        </div>
+        <div class="debt-meta-item"><div class="mlbl">Min Payment</div><div class="mval">${fmt(debt.min)}/mo</div></div>
+        <div class="debt-meta-item"><div class="mlbl">Payoff Time</div><div class="mval ${months===0?'':'accent'}">${timeStr}</div></div>
+      </div>
+      <div class="debt-progress-wrap"><div class="debt-progress" style="width:${pct}%"></div></div>
+      <div class="debt-pct"><span>${pct.toFixed(0)}% paid off</span><span>${fmt(debt.orig-debt.balance)} of ${fmt(debt.orig)}</span></div>
+      ${debt.statusMsg?`<div style="font-size:.72rem;color:var(--green);margin-top:6px">✅ ${debt.statusMsg}</div>`:''}
+    </div>`;
+  }).join('');
+
+  summary.style.display='block';
+  const debtFreeDate=new Date();debtFreeDate.setMonth(debtFreeDate.getMonth()+maxMonths);
+  const dfStr=maxMonths===0?'Now!':debtFreeDate.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+  document.getElementById('snow-stats').innerHTML=`
+    <div class="snow-stat"><div class="slbl">Total Debt</div><div class="sval red">${fmt(totalDebt)}</div></div>
+    <div class="snow-stat"><div class="slbl">Min Payments</div><div class="sval">${fmt(totalMin)}/mo</div></div>
+    <div class="snow-stat"><div class="slbl">Extra Snowball</div><div class="sval accent">${fmt(extra)}/mo</div></div>
+    <div class="snow-stat"><div class="slbl">Debt-Free Date</div><div class="sval accent">${dfStr}</div></div>`;
+}
+
+// ── DEBT STATEMENT UPLOAD ─────────────────────────────────────
+function handleDebtStatement(event, debtId){
+  const file=event.target.files[0];
+  if(!file) return;
+  const debt=debts.find(d=>d.id===debtId);
+  if(!debt) return;
+  const statusEl=document.querySelector(`[data-debt-status="${debtId}"]`);
+  toast(`Reading statement for ${debt.name}...`);
+  if(file.name.match(/\.pdf$/i)){
+    const rd=new FileReader();
+    rd.onload=async e=>{await sendDebtStatementToAI(e.target.result.split(',')[1],debtId,true);};
+    rd.readAsDataURL(file);
+  } else {
+    Papa.parse(file,{header:true,skipEmptyLines:true,complete:r=>{
+      if(!r.data.length){toast('No data in file.');return;}
+      sendDebtStatementToAI(JSON.stringify(r.data.slice(0,80)),debtId,false);
+    }});
+  }
+  event.target.value=''; // reset so same file can be re-uploaded
+}
+
+async function sendDebtStatementToAI(data, debtId, isPDF){
+  const debt=debts.find(d=>d.id===debtId);
+  if(!debt) return;
+  try{
+    const content=isPDF
+      ? [{type:'document',source:{type:'base64',media_type:'application/pdf',data}},
+         {type:'text',text:`This is a credit card or loan statement for "${debt.name}". Extract the current balance owed (statement balance or current balance, NOT the minimum payment). Return ONLY JSON: {"currentBalance":number,"minPayment":number,"statementDate":"YYYY-MM-DD"} — no markdown.`}]
+      : `Statement CSV for "${debt.name}" account:\n${data}\n\nExtract the current balance owed. Return ONLY JSON: {"currentBalance":number,"minPayment":number,"statementDate":"YYYY-MM-DD"} — no markdown.`;
+
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      model:'claude-sonnet-4-6',max_tokens:300,
+      messages:[{role:'user',content}]
+    })});
+    const d=await res.json();
+    const text=d.content?.map(b=>b.text||'').join('')||'';
+    const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+    if(parsed.currentBalance!==undefined){
+      const oldBal=debt.balance;
+      debt.balance=parseFloat(parsed.currentBalance)||0;
+      if(parsed.minPayment&&parsed.minPayment>0) debt.min=parseFloat(parsed.minPayment);
+      debt.lastUpdated=parsed.statementDate||new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+      debt.statusMsg=`Balance updated from ${fmt(oldBal)} → ${fmt(debt.balance)}${parsed.minPayment?` · Min payment: ${fmt(parsed.minPayment)}`:''}`;
+      save();renderDebts();
+      toast(`${debt.name} updated to ${fmt(debt.balance)}`);
+    } else {
+      toast('Could not read balance. Try a different file.');
+    }
+  }catch(e){toast('Error reading statement. Try CSV export.');}
+}
+
+// ── ACTIONS ──────────────────────────────────────────────────
+function changeCat(id,newCat){
+  const tx=transactions.find(t=>String(t.id)===String(id));
+  if(!tx) return;
+  const oldCat=tx.category;
+  tx.category=newCat;
+  // Learn from this correction
+  const key=merchantKey(tx.description);
+  if(key.length>2){
+    learnedRules[key]=newCat;
+    if(oldCat!==newCat) toast(`✏️ Learned: "${key}" → ${newCat}`);
+  }
+  save();refresh();
+}
+function deleteTx(id){transactions=transactions.filter(t=>String(t.id)!==String(id));save();refresh();}
+function addManualTx(){
+  const date=prompt('Date (YYYY-MM-DD):')||'';
+  const desc=prompt('Description:')||'Manual entry';
+  const amt=parseFloat(prompt('Amount (negative=expense, positive=income):')||'0');
+  if(isNaN(amt))return;
+  transactions.push({id:Date.now(),date,description:desc,amount:amt,category:autoCat(desc)});
+  save();refresh();toast('Transaction added');
+}
+function clearAll(){if(!confirm('Clear all transactions?'))return;transactions=[];save();refresh();}
+function saveBudgets(){document.querySelectorAll('.binput').forEach(i=>{budgets[i.dataset.cat]=parseFloat(i.value)||0;});save();renderTrends();renderOverviewBudget();toast('Budget targets saved!');}
+function saveNotes(){notes=document.getElementById('weekly-notes').value;save();toast('Notes saved!');}
+function renderNotes(){document.getElementById('weekly-notes').value=notes;}
+function fmt(n){return'$'+Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});}
+function toast(msg){const e=document.getElementById('toast');e.textContent=msg;e.classList.add('show');setTimeout(()=>e.classList.remove('show'),2500);}
+
+// ── SAVINGS ACCOUNT OVERVIEW ─────────────────────────────────
+function renderSavingsAccount(){
+  const deposits=savingsTxs.filter(t=>t.amount>0).reduce((s,t)=>s+t.amount,0);
+  const withdrawals=savingsTxs.filter(t=>t.amount<0).reduce((s,t)=>s+Math.abs(t.amount),0);
+  const allocated=buckets.reduce((s,b)=>s+b.saved,0);
+  const unallocated=Math.max(savingsBalance-allocated,0);
+  document.getElementById('sa-balance').textContent=fmt(savingsBalance);
+  document.getElementById('sa-deposits').textContent=fmt(deposits);
+  document.getElementById('sa-withdrawals').textContent=fmt(withdrawals);
+  document.getElementById('sa-allocated').textContent=fmt(allocated);
+  document.getElementById('sa-unallocated').textContent=fmt(unallocated);
+}
+
+// ── SAVINGS BUCKETS ───────────────────────────────────────────
+function addBucket(){
+  const name=document.getElementById('b-name').value.trim();
+  const icon=document.getElementById('b-icon').value;
+  const saved=parseFloat(document.getElementById('b-saved').value)||0;
+  const target=parseFloat(document.getElementById('b-target').value)||0;
+  const note=document.getElementById('b-note').value.trim();
+  if(!name){toast('Enter a bucket name.');return;}
+  buckets.push({id:Date.now(),name,icon,saved,target,note});
+  ['b-name','b-saved','b-target','b-note'].forEach(id=>document.getElementById(id).value='');
+  save();renderBuckets();renderSavingsAccount();toast('Bucket added!');
+}
+
+function deleteBucket(id){
+  buckets=buckets.filter(b=>b.id!==id);
+  save();renderBuckets();renderSavingsAccount();
+}
+
+function updateBucketSaved(id,val){
+  const b=buckets.find(b=>b.id===id);
+  if(b){b.saved=parseFloat(val)||0;save();renderBuckets();renderSavingsAccount();renderStats();}
+}
+
+function renderBuckets(){
+  const grid=document.getElementById('buckets-grid');
+  if(!buckets.length){
+    grid.innerHTML='<div style="color:var(--soft);font-size:.83rem;text-align:center;padding:40px;grid-column:1/-1">Add your first savings bucket above — vacation fund, emergency savings, Christmas money, anything you\'re setting aside.</div>';
+    document.getElementById('buckets-total').textContent='$0.00';
+    document.getElementById('buckets-count').textContent='0 buckets';
+    document.getElementById('buckets-target-total').textContent='$0.00';
+    return;
+  }
+
+  grid.innerHTML=buckets.map(b=>{
+    const hasTarget=b.target>0;
+    const pct=hasTarget?Math.min((b.saved/b.target)*100,100):100;
+    const full=hasTarget&&b.saved>=b.target;
+    return`<div class="bucket-card ${full?'full-bucket':''}">
+      <div class="bucket-top">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div class="bucket-icon">${b.icon}</div>
+          <div>
+            <div class="bucket-name">${b.name}</div>
+            ${b.note?`<div class="bucket-note">${b.note}</div>`:''}
+          </div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteBucket(${b.id})">✕</button>
+      </div>
+      <div class="bucket-amt-row">
+        <div class="bucket-amt-item">
+          <div class="bamlbl">Saved</div>
+          <input type="number" value="${b.saved}" min="0" step="0.01"
+            style="width:110px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;font-size:.9rem;font-family:'DM Serif Display',serif;font-weight:700;background:var(--bg);color:var(--green)"
+            onchange="updateBucketSaved(${b.id},this.value)">
+        </div>
+        ${hasTarget?`<div class="bucket-amt-item"><div class="bamlbl">Target</div><div class="bamval">${fmt(b.target)}</div></div>`:''}
+        ${hasTarget?`<div class="bucket-amt-item"><div class="bamlbl">To Go</div><div class="bamval" style="color:var(--soft)">${fmt(Math.max(b.target-b.saved,0))}</div></div>`:''}
+      </div>
+      ${hasTarget?`<div class="bucket-bar-wrap"><div class="bucket-bar ${full?'full-bar':''}" style="width:${pct}%"></div></div>
+      <div class="bucket-pct-row"><span>${pct.toFixed(0)}% saved</span>${full?'<span style="color:var(--green);font-weight:700">✅ Funded!</span>':''}</div>`:''}
+    </div>`;
+  }).join('');
+
+  const totalSaved=buckets.reduce((s,b)=>s+b.saved,0);
+  const totalTarget=buckets.reduce((s,b)=>s+b.target,0);
+  document.getElementById('buckets-total').textContent=fmt(totalSaved);
+  document.getElementById('buckets-count').textContent=`${buckets.length} bucket${buckets.length!==1?'s':''}`;
+  document.getElementById('buckets-target-total').textContent=totalTarget>0?fmt(totalTarget):'—';
+}
+
+// ── INSIGHTS ─────────────────────────────────────────────────
+const KNOWN_SUBS = [
+  'netflix','hulu','disney','hbo','max','paramount','peacock','apple tv','youtube premium',
+  'spotify','apple music','pandora','tidal','amazon music',
+  'amazon prime','costco membership','sam\'s club',
+  'adobe','microsoft 365','office 365','dropbox','icloud','google one','google storage',
+  'gym','planet fitness','anytime fitness','la fitness','orangetheory','peloton',
+  'duolingo','calm','headspace','noom','weight watchers',
+  'audible','kindle unlimited','new york times','wall street journal','the athletic',
+  'grammarly','canva','chatgpt','claude','notion','todoist','1password','lastpass',
+  'chewy','petco','rover',
+  'xfinity','comcast','cox','spectrum','verizon','at&t','t-mobile','directv','dish',
+  'quickbooks','turbotax','credit karma',
+];
+
+function detectSubscriptions(txs){
+  const candidates={};
+  txs.filter(tx=>tx.amount<0).forEach(tx=>{
+    const d=tx.description.toLowerCase();
+    const matchedSub=KNOWN_SUBS.find(s=>d.includes(s));
+    const key=matchedSub||null;
+    if(!key) return;
+    if(!candidates[key]) candidates[key]={name:tx.description,key,charges:[],total:0};
+    candidates[key].charges.push({date:tx.date,amount:Math.abs(tx.amount)});
+    candidates[key].total+=Math.abs(tx.amount);
+  });
+  return Object.values(candidates).sort((a,b)=>b.total-a.total);
+}
+
+function renderInsights(){
+  const txs=transactions.filter(tx=>tx.amount<0&&tx.category!=='Transfer');
+
+  // ── Subscriptions ──
+  const subs=detectSubscriptions(transactions);
+  const subsEl=document.getElementById('subs-list');
+  if(!subs.length){
+    subsEl.innerHTML='<div style="color:var(--soft);font-size:.83rem">No known subscriptions detected — upload more statements to find them</div>';
+  } else {
+    const totalSubAmt=subs.reduce((s,sub)=>s+sub.total,0);
+    const monthlyEst=subs.reduce((s,sub)=>{
+      const avg=sub.total/(sub.charges.length||1);
+      return s+avg;
+    },0);
+    subsEl.innerHTML=`
+      <div class="insight-card info" style="margin-bottom:12px">
+        <div class="insight-title">📺 ${subs.length} subscription${subs.length!==1?'s':''} detected</div>
+        <div class="insight-body">Estimated <strong>${fmt(monthlyEst)}/month</strong> · ${fmt(totalSubAmt)} in this period</div>
+        <div class="insight-body" style="margin-top:4px;color:var(--amber)">Review each one — are you actually using it?</div>
+      </div>
+      <div class="sub-list">
+        ${subs.map(sub=>{
+          const avg=sub.total/(sub.charges.length||1);
+          const freq=sub.charges.length>=3?'Monthly':sub.charges.length===2?'Bi-monthly':'Occasional';
+          return`<div class="sub-item">
+            <div>
+              <div class="sub-item-name">${sub.name}</div>
+              <div class="sub-item-freq">${freq} · ${sub.charges.length} charge${sub.charges.length!==1?'s':''}</div>
+            </div>
+            <div class="sub-item-amt">${fmt(avg)}/mo est.</div>
+          </div>`;
+        }).join('')}
+      </div>`;
+  }
+
+  // ── Spending alerts ──
+  const alertsEl=document.getElementById('alerts-list');
+  const catTotals={};
+  txs.forEach(tx=>{ catTotals[tx.category]=(catTotals[tx.category]||0)+Math.abs(tx.amount); });
+  const alerts=[];
+
+  // Dining alert
+  const dining=catTotals['Dining Out']||0;
+  const groceries=catTotals['Groceries']||0;
+  if(dining>0&&groceries>0&&dining>groceries*0.6){
+    alerts.push({type:'warn',icon:'🍔',title:'Dining Out is High vs. Groceries',body:`You spent ${fmt(dining)} dining out vs. ${fmt(groceries)} on groceries. Cooking more could save ${fmt(dining*0.4)}/month.`});
+  } else if(dining>500){
+    alerts.push({type:'warn',icon:'🍔',title:'Dining Out Spending',body:`${fmt(dining)} spent dining out this period. Consider a weekly dining budget.`});
+  }
+
+  // Shopping vs budget
+  const shopping=catTotals['Shopping']||0;
+  if(shopping>800) alerts.push({type:'warn',icon:'🛒',title:'High Shopping Spend',body:`${fmt(shopping)} in shopping this period. Review for impulse purchases or one-time needs.`});
+
+  // Entertainment + subs combo
+  const entertain=catTotals['Entertainment']||0;
+  const subsTotal=subs.reduce((s,sub)=>s+sub.total,0);
+  if(entertain+subsTotal>300) alerts.push({type:'danger',icon:'📱',title:'Entertainment + Subscriptions',body:`${fmt(entertain+subsTotal)} combined on entertainment and subscriptions. This is a common area to trim — could you cut ${fmt(Math.round((entertain+subsTotal)*0.25/5)*5)}/month?`});
+
+  // Income vs spending
+  let income=0,spent=0;
+  transactions.forEach(tx=>{
+    if(tx.category==='Income') income+=Math.abs(tx.amount);
+    else if(tx.amount<0&&tx.category!=='Transfer') spent+=Math.abs(tx.amount);
+  });
+  if(income>0&&spent>income*0.95) alerts.push({type:'danger',icon:'🚨',title:'Spending Near or Over Income',body:`You spent ${fmt(spent)} vs. ${fmt(income)} income — only ${fmt(Math.max(income-spent,0))} left over. Time to tighten up.`});
+  else if(income>0&&spent<income*0.7) alerts.push({type:'good',icon:'✅',title:'Great Savings Rate',body:`Spending ${fmt(spent)} on ${fmt(income)} income — you kept ${((1-spent/income)*100).toFixed(0)}% of your earnings. Excellent.`});
+
+  // Gas spike
+  const gas=catTotals['Gas & Auto']||0;
+  if(gas>400) alerts.push({type:'warn',icon:'⛽',title:'Gas & Auto is Elevated',body:`${fmt(gas)} this period. If you have multiple vehicles, check if one is being driven significantly more.`});
+
+  alertsEl.innerHTML=alerts.length
+    ? alerts.map(a=>`<div class="insight-card ${a.type}"><div class="insight-title">${a.icon} ${a.title}</div><div class="insight-body">${a.body}</div></div>`).join('')
+    : '<div class="insight-card good"><div class="insight-title">✅ No major spending alerts</div><div class="insight-body">Your spending looks balanced. Upload more statements to get deeper analysis.</div></div>';
+
+  // ── Category breakdown ──
+  const breakdown=document.getElementById('category-breakdown');
+  const sorted=Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+  const total=sorted.reduce((s,[,v])=>s+v,0);
+  breakdown.innerHTML=sorted.map(([cat,amt])=>{
+    const pct=total>0?((amt/total)*100).toFixed(1):0;
+    const budget=budgets[cat]||0;
+    const overBudget=budget>0&&amt>budget;
+    return`<div class="insight-card ${overBudget?'danger':'info'}">
+      <div class="insight-title">
+        <div style="width:10px;height:10px;border-radius:50%;background:${catFor(cat).color};flex-shrink:0"></div>
+        ${cat}
+        ${overBudget?`<span class="trend-badge badge-over" style="margin-left:auto">OVER</span>`:''}
+      </div>
+      <div class="insight-amount">${fmt(amt)}</div>
+      <div class="insight-body">${pct}% of spending${budget>0?` · budget: ${fmt(budget)}`:''}${overBudget?` · ${fmt(amt-budget)} over`:''}</div>
+    </div>`;
+  }).join('');
+
+  // ── Learned rules ──
+  const learnedEl=document.getElementById('learned-rules-list');
+  const rules=Object.entries(learnedRules);
+  learnedEl.innerHTML=rules.length
+    ? `<div class="learned-list">${rules.map(([merchant,cat])=>`
+        <div class="learned-item">
+          <div class="learned-merchant">"${merchant}"</div>
+          <div class="learned-arrow">→</div>
+          <span class="cat-badge" style="background:${catFor(cat).color}22;color:${catFor(cat).color};border:1px solid ${catFor(cat).color}44;padding:2px 8px;border-radius:10px;font-size:.72rem;font-weight:600">${cat}</span>
+          <button class="btn btn-danger btn-sm" onclick="deleteLearnedRule('${merchant.replace(/'/g,"\\'")}')">✕</button>
+        </div>`).join('')}
+      </div>`
+    : '<div style="color:var(--soft);font-size:.83rem">No custom rules yet — correct a category in Transactions to teach me</div>';
+}
+
+function deleteLearnedRule(merchant){
+  delete learnedRules[merchant];
+  save();renderInsights();toast('Rule removed');
+}
+
+function clearLearnedRules(){
+  if(!confirm('Clear all learned rules?')) return;
+  learnedRules={};
+  save();renderInsights();toast('Learned rules cleared');
+}
+
+// ── GOOGLE DRIVE SYNC ─────────────────────────────────────────
+// Uses Google Identity Services (GIS) + Drive REST API
+// No backend needed — all OAuth happens in the browser via popup
+const DRIVE_CLIENT_ID='535546698445-jrb14tmn9816qt2jm5am2ck4rus6euev.apps.googleusercontent.com';
+const DRIVE_SCOPES='https://www.googleapis.com/auth/drive.file';
+const DRIVE_FILE_NAME='family-budget-data.json';
+const DRIVE_RECEIPTS_FOLDER='Family Budget Receipts';
+
+let driveConnected=false, driveSyncing=false, driveAccessToken='', driveFileId='', driveFolderId='';
+let driveSaveTimer=null;
+function debouncedDriveSave(){ clearTimeout(driveSaveTimer); driveSaveTimer=setTimeout(()=>driveSave(true),4000); }
+
+function driveSetStatus(status, text){
+  const dot=document.getElementById('drive-dot');
+  const statusText=document.getElementById('drive-status-text');
+  const connectBtn=document.getElementById('drive-connect-btn');
+  const saveBtn=document.getElementById('drive-save-btn');
+  const loadBtn=document.getElementById('drive-load-btn');
+  const discBtn=document.getElementById('drive-disconnect-btn');
+  dot.className='drive-dot '+status;
+  statusText.textContent=text;
+  const connected=status==='connected'||status==='syncing';
+  connectBtn.style.display=connected?'none':'block';
+  saveBtn.style.display=connected?'block':'none';
+  loadBtn.style.display=connected?'block':'none';
+  discBtn.style.display=connected?'block':'none';
+}
+
+function driveConnect(){
+  // Check if CLIENT_ID has been set
+  if(DRIVE_CLIENT_ID==='YOUR_GOOGLE_CLIENT_ID'){
+    showDriveSetupInstructions();
+    return;
+  }
+  driveSetStatus('syncing','Connecting to Google Drive...');
+  const client=google.accounts.oauth2.initTokenClient({
+    client_id:DRIVE_CLIENT_ID,
+    scope:DRIVE_SCOPES,
+    callback:(resp)=>{
+      if(resp.error){driveSetStatus('error','Connection failed — try again');return;}
+      driveAccessToken=resp.access_token;
+      driveConnected=true;
+      localStorage.setItem('drive_token',resp.access_token);
+      driveSetStatus('connected','Connected to Google Drive');
+      toast('✅ Connected to Google Drive!');
+      driveEnsureFolder().then(()=>driveLoad());
+    }
+  });
+  client.requestAccessToken();
+}
+
+function driveDisconnect(){
+  driveConnected=false;driveAccessToken='';driveFileId='';driveFolderId='';
+  localStorage.removeItem('drive_token');
+  driveSetStatus('','Not connected to Google Drive');
+  toast('Disconnected from Drive');
+}
+
+async function driveEnsureFolder(){
+  // Find or create "Family Budget Receipts" folder
+  try{
+    const search=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_RECEIPTS_FOLDER}' and mimeType='application/vnd.google-apps.folder' and trashed=false&fields=files(id,name)`,
+      {headers:{Authorization:'Bearer '+driveAccessToken}});
+    const data=await search.json();
+    if(data.files&&data.files.length>0){
+      driveFolderId=data.files[0].id;
+    } else {
+      const create=await fetch('https://www.googleapis.com/drive/v3/files',{
+        method:'POST',headers:{'Authorization':'Bearer '+driveAccessToken,'Content-Type':'application/json'},
+        body:JSON.stringify({name:DRIVE_RECEIPTS_FOLDER,mimeType:'application/vnd.google-apps.folder'})
+      });
+      const folder=await create.json();
+      driveFolderId=folder.id;
+    }
+  }catch(e){console.warn('Drive folder setup failed',e);}
+}
+
+async function driveSave(silent=false){
+  if(!driveConnected||!driveAccessToken){toast('Connect to Drive first');return;}
+  driveSyncing=true;
+  driveSetStatus('syncing', silent?'Auto-saving...':'Saving to Drive...');
+  try{
+    const data=JSON.stringify(getDataBundle());
+    let fileId=driveFileId;
+    if(!fileId){
+      // Search for existing file
+      const search=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}' and trashed=false&fields=files(id)`,
+        {headers:{Authorization:'Bearer '+driveAccessToken}});
+      const found=await search.json();
+      if(found.files&&found.files.length>0) fileId=found.files[0].id;
+    }
+    if(fileId){
+      // Update existing
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=media`,{
+        method:'PATCH',headers:{'Authorization':'Bearer '+driveAccessToken,'Content-Type':'application/json'},
+        body:data
+      });
+      driveFileId=fileId;
+    } else {
+      // Create new
+      const meta=await fetch('https://www.googleapis.com/drive/v3/files',{
+        method:'POST',headers:{'Authorization':'Bearer '+driveAccessToken,'Content-Type':'application/json'},
+        body:JSON.stringify({name:DRIVE_FILE_NAME})
+      });
+      const file=await meta.json();
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=media`,{
+        method:'PATCH',headers:{'Authorization':'Bearer '+driveAccessToken,'Content-Type':'application/json'},
+        body:data
+      });
+      driveFileId=file.id;
+    }
+    const now=new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+    driveSetStatus('connected',`Synced to Drive · ${now}`);
+    if(!silent) toast('✅ Saved to Google Drive');
+  }catch(e){
+    driveSetStatus('error','Drive save failed — check connection');
+    if(!silent) toast('Drive save failed');
+  }
+  driveSyncing=false;
+}
+
+async function driveLoad(){
+  if(!driveConnected||!driveAccessToken){toast('Connect to Drive first');return;}
+  driveSetStatus('syncing','Loading from Drive...');
+  try{
+    const search=await fetch(`https://www.googleapis.com/drive/v3/files?q=name='${DRIVE_FILE_NAME}' and trashed=false&fields=files(id,modifiedTime)`,
+      {headers:{Authorization:'Bearer '+driveAccessToken}});
+    const found=await search.json();
+    if(!found.files||!found.files.length){
+      driveSetStatus('connected','Connected · No saved data found — starting fresh');
+      toast('No existing data found in Drive — your current data is active');
+      return;
+    }
+    const fileId=found.files[0].id;
+    driveFileId=fileId;
+    const content=await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+      {headers:{Authorization:'Bearer '+driveAccessToken}});
+    const d=await content.json();
+    transactions=d.transactions||[];budgets=d.budgets||defBudgets();notes=d.notes||'';
+    debts=d.debts||[];buckets=d.buckets||[];savingsTxs=d.savingsTxs||[];
+    savingsBalance=d.savingsBalance||0;learnedRules=d.learnedRules||{};receipts=d.receipts||[];
+    localStorage.setItem(KEY,JSON.stringify(getDataBundle()));
+    const modTime=new Date(found.files[0].modifiedTime).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+    driveSetStatus('connected',`Loaded from Drive · Last saved ${modTime}`);
+    refresh();renderDebts();renderBuckets();renderSavingsAccount();renderReceipts();
+    toast('✅ Data loaded from Google Drive');
+  }catch(e){
+    driveSetStatus('error','Drive load failed — check connection');
+    toast('Could not load from Drive');
+  }
+}
+
+function showDriveSetupInstructions(){
+  const msg=`To connect Google Drive, you need a free Google API Client ID.
+
+Here's the quick setup (5 minutes):
+
+1. Go to console.cloud.google.com
+2. Create a new project (name it "Family Budget")
+3. Enable the Google Drive API
+4. Go to APIs & Services → Credentials
+5. Create an OAuth 2.0 Client ID (Web application type)
+6. Add your file's path as an authorized origin
+   (e.g. file:// or http://localhost)
+7. Copy your Client ID
+8. Open this HTML file in a text editor
+9. Find the line: const DRIVE_CLIENT_ID='YOUR_GOOGLE_CLIENT_ID'
+10. Replace YOUR_GOOGLE_CLIENT_ID with your actual Client ID
+11. Save and reopen the file
+
+Alternatively — use the Export/Import JSON buttons below as a manual sync method between devices.`;
+  alert(msg);
+}
+
+// Manual export/import fallback
+function exportJSON(){
+  const data=JSON.stringify(getDataBundle(),null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`family-budget-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();URL.revokeObjectURL(url);
+  toast('Data exported — share this file to sync');
+}
+
+function importJSON(){
+  const input=document.createElement('input');
+  input.type='file';input.accept='.json';
+  input.onchange=e=>{
+    const file=e.target.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=ev=>{
+      try{
+        const d=JSON.parse(ev.target.result);
+        if(!confirm(`Load data from ${file.name}? This will replace your current data.`))return;
+        transactions=d.transactions||[];budgets=d.budgets||defBudgets();notes=d.notes||'';
+        debts=d.debts||[];buckets=d.buckets||[];savingsTxs=d.savingsTxs||[];
+        savingsBalance=d.savingsBalance||0;learnedRules=d.learnedRules||{};receipts=d.receipts||[];
+        save();refresh();renderDebts();renderBuckets();renderSavingsAccount();renderReceipts();
+        toast('✅ Data imported successfully');
+      }catch{toast('Invalid file — could not import');}
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// ── RECEIPTS ─────────────────────────────────────────────────
+const receiptDrop=document.getElementById('receipt-drop');
+const receiptFi=document.getElementById('receipt-file-input');
+receiptDrop.addEventListener('dragover',e=>{e.preventDefault();receiptDrop.classList.add('over');});
+receiptDrop.addEventListener('dragleave',()=>receiptDrop.classList.remove('over'));
+receiptDrop.addEventListener('drop',e=>{e.preventDefault();receiptDrop.classList.remove('over');handleReceiptFiles(e.dataTransfer.files);});
+receiptFi.addEventListener('change',e=>{handleReceiptFiles(e.target.files);e.target.value='';});
+
+function handleReceiptFiles(files){
+  Array.from(files).forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=async ev=>{
+      const dataUrl=ev.target.result;
+      const id=Date.now()+Math.random();
+      const isPDF=file.name.match(/\.pdf$/i);
+      const tempReceipt={id,name:file.name,date:new Date().toISOString().slice(0,10),dataUrl,isPDF,summary:'Reading...',tags:[],uploadedAt:new Date().toLocaleString()};
+      receipts.unshift(tempReceipt);
+      renderReceipts();
+      document.getElementById('receipt-ai-status').textContent=`🤖 Reading ${file.name}...`;
+      try{
+        let content;
+        if(isPDF){
+          const b64=dataUrl.split(',')[1];
+          content=[{type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+            {type:'text',text:`Analyze this receipt/document. Return ONLY JSON: {"summary":"one sentence describing what this is and the total amount if visible","merchant":"merchant or provider name","amount":number or null,"date":"YYYY-MM-DD or null","tags":["medical"|"tax"|"business"|"other"],"notes":"any important details like order number, patient name, tax-deductible reason"}. No markdown.`}];
+        } else {
+          const b64=dataUrl.split(',')[1];
+          const mime=file.type||'image/jpeg';
+          content=[{type:'image',source:{type:'base64',media_type:mime,data:b64}},
+            {type:'text',text:`Analyze this receipt or screenshot. Return ONLY JSON: {"summary":"one sentence describing what this is and the total amount if visible","merchant":"merchant or provider name","amount":number or null,"date":"YYYY-MM-DD or null","tags":["medical"|"tax"|"business"|"other"],"notes":"any important details like order number, prescription, tax-deductible reason"}. No markdown.`}];
+        }
+        const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({model:'claude-sonnet-4-6',max_tokens:400,messages:[{role:'user',content}]})
+        });
+        const data=await res.json();
+        const text=data.content?.map(b=>b.text||'').join('')||'';
+        const parsed=JSON.parse(text.replace(/```json|```/g,'').trim());
+        const receipt=receipts.find(r=>r.id===id);
+        if(receipt){
+          receipt.summary=parsed.summary||'Receipt uploaded';
+          receipt.merchant=parsed.merchant||'';
+          receipt.amount=parsed.amount||null;
+          receipt.receiptDate=parsed.date||receipt.date;
+          receipt.tags=parsed.tags||['other'];
+          receipt.notes=parsed.notes||'';
+        }
+        document.getElementById('receipt-ai-status').textContent=`✅ ${file.name} processed`;
+        save();renderReceipts();
+        // Upload to Drive if connected
+        if(driveConnected&&driveFolderId) uploadReceiptToDrive(file,dataUrl,id);
+      }catch(e){
+        const receipt=receipts.find(r=>r.id===id);
+        if(receipt){receipt.summary='Could not read — uploaded manually';receipt.tags=['other'];}
+        document.getElementById('receipt-ai-status').textContent='Could not analyze — saved as-is';
+        save();renderReceipts();
+      }
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function uploadReceiptToDrive(file, dataUrl, receiptId){
+  try{
+    const b64=dataUrl.split(',')[1];
+    const binary=atob(b64);
+    const bytes=new Uint8Array(binary.length);
+    for(let i=0;i<binary.length;i++) bytes[i]=binary.charCodeAt(i);
+    const blob=new Blob([bytes],{type:file.type});
+    const meta={name:file.name,parents:[driveFolderId]};
+    const form=new FormData();
+    form.append('metadata',new Blob([JSON.stringify(meta)],{type:'application/json'}));
+    form.append('file',blob);
+    const res=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart',{
+      method:'POST',headers:{Authorization:'Bearer '+driveAccessToken},body:form
+    });
+    const data=await res.json();
+    const receipt=receipts.find(r=>r.id===receiptId);
+    if(receipt) receipt.driveFileId=data.id;
+    save();
+  }catch(e){console.warn('Receipt Drive upload failed',e);}
+}
+
+function renderReceipts(){
+  const filter=document.getElementById('receipt-filter')?.value||'';
+  const filtered=filter?receipts.filter(r=>r.tags&&r.tags.includes(filter)):receipts;
+  document.getElementById('receipt-count').textContent=`${filtered.length} receipt${filtered.length!==1?'s':''}`;
+  const grid=document.getElementById('receipts-grid');
+  if(!filtered.length){
+    grid.innerHTML='<div style="color:var(--soft);font-size:.83rem;text-align:center;padding:40px;grid-column:1/-1">No receipts yet — upload your first one above</div>';
+    return;
+  }
+  grid.innerHTML=filtered.map(r=>{
+    const tagHtml=(r.tags||[]).map(t=>`<span class="receipt-tag tag-${t}">${t}</span>`).join('');
+    const thumb=r.isPDF
+      ? `<div class="receipt-thumb pdf-thumb" style="display:flex;align-items:center;justify-content:center">📄</div>`
+      : r.dataUrl
+        ? `<div class="receipt-thumb"><img src="${r.dataUrl}" alt="${r.name}"></div>`
+        : `<div class="receipt-thumb" style="display:flex;align-items:center;justify-content:center">🧾</div>`;
+    return`<div class="receipt-card">
+      ${thumb}
+      <div class="receipt-body">
+        <div class="receipt-name">${r.merchant||r.name}</div>
+        <div class="receipt-meta">${r.receiptDate||r.date}${r.amount?` · $${Math.abs(r.amount).toFixed(2)}`:''}${r.driveFileId?' · ☁️ In Drive':''}</div>
+        <div class="receipt-tags">${tagHtml}</div>
+        <div class="receipt-ai">${r.summary}${r.notes?`<br><em>${r.notes}</em>`:''}</div>
+        <div style="margin-top:8px;display:flex;gap:6px">
+          <button class="btn btn-danger btn-sm" onclick="deleteReceipt(${r.id})">✕ Remove</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteReceipt(id){
+  if(!confirm('Remove this receipt?'))return;
+  receipts=receipts.filter(r=>r.id!==id);
+  save();renderReceipts();
+}
+
+// Add export/import buttons to the overview page drive bar area
+document.addEventListener('DOMContentLoaded',()=>{
+  const driveActions=document.querySelector('.drive-actions');
+  if(driveActions){
+    const exp=document.createElement('button');
+    exp.className='btn-drive';exp.textContent='⬇ Export';exp.onclick=exportJSON;
+    const imp=document.createElement('button');
+    imp.className='btn-drive';imp.textContent='⬆ Import';imp.onclick=importJSON;
+    driveActions.appendChild(exp);driveActions.appendChild(imp);
+  }
+});
+
+// Load Google Identity Services
+const gisScript=document.createElement('script');
+gisScript.src='https://accounts.google.com/gsi/client';
+gisScript.async=true;document.head.appendChild(gisScript);
+
+// ── INIT ─────────────────────────────────────────────────────
+load();setWeek();refresh();renderDebts();renderBuckets();renderSavingsAccount();
+</script>
+</body>
+</html>
